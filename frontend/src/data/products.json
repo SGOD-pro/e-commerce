@@ -1,0 +1,112 @@
+[
+  {
+    "id": 1,
+    "name": "Wireless Noise-Cancelling Headphones",
+    "category": "Electronics",
+    "price": 299.99,
+    "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop",
+    "description": "Premium wireless headphones with active noise cancellation, 30-hour battery life, and studio-quality sound.",
+    "rating": 4.8,
+    "reviews": 2847,
+    "inStock": true
+  },
+  {
+    "id": 2,
+    "name": "Minimalist Leather Wallet",
+    "category": "Accessories",
+    "price": 79.99,
+    "image": "https://images.unsplash.com/photo-1627123424574-724758594e93?w=400&h=400&fit=crop",
+    "description": "Handcrafted genuine leather wallet with RFID blocking technology and sleek minimalist design.",
+    "rating": 4.6,
+    "reviews": 1523,
+    "inStock": true
+  },
+  {
+    "id": 3,
+    "name": "Smart Fitness Watch",
+    "category": "Electronics",
+    "price": 199.99,
+    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop",
+    "description": "Advanced fitness tracking with heart rate monitor, GPS, and 7-day battery life.",
+    "rating": 4.7,
+    "reviews": 3901,
+    "inStock": true
+  },
+  {
+    "id": 4,
+    "name": "Organic Cotton T-Shirt",
+    "category": "Clothing",
+    "price": 39.99,
+    "image": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop",
+    "description": "Premium organic cotton t-shirt with perfect fit and sustainable production.",
+    "rating": 4.5,
+    "reviews": 892,
+    "inStock": true
+  },
+  {
+    "id": 5,
+    "name": "Professional Camera Lens",
+    "category": "Electronics",
+    "price": 899.99,
+    "image": "https://images.unsplash.com/photo-1606983340126-99ab4feaa64a?w=400&h=400&fit=crop",
+    "description": "Professional-grade 85mm f/1.4 lens with optical image stabilization.",
+    "rating": 4.9,
+    "reviews": 567,
+    "inStock": true
+  },
+  {
+    "id": 6,
+    "name": "Ceramic Coffee Mug Set",
+    "category": "Home",
+    "price": 49.99,
+    "image": "https://images.unsplash.com/photo-1514228742587-6b1558fcf93a?w=400&h=400&fit=crop",
+    "description": "Handcrafted ceramic mugs with modern design, perfect for your morning coffee ritual.",
+    "rating": 4.4,
+    "reviews": 1289,
+    "inStock": true
+  },
+  {
+    "id": 7,
+    "name": "Bluetooth Mechanical Keyboard",
+    "category": "Electronics",
+    "price": 159.99,
+    "image": "https://images.unsplash.com/photo-1541140532154-b024d705b90a?w=400&h=400&fit=crop",
+    "description": "Premium mechanical keyboard with Cherry MX switches and wireless connectivity.",
+    "rating": 4.7,
+    "reviews": 2156,
+    "inStock": true
+  },
+  {
+    "id": 8,
+    "name": "Vintage Denim Jacket",
+    "category": "Clothing",
+    "price": 89.99,
+    "image": "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400&h=400&fit=crop",
+    "description": "Classic vintage-style denim jacket with authentic wash and timeless design.",
+    "rating": 4.3,
+    "reviews": 743,
+    "inStock": true
+  },
+  {
+    "id": 9,
+    "name": "Stainless Steel Water Bottle",
+    "category": "Accessories",
+    "price": 29.99,
+    "image": "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&h=400&fit=crop",
+    "description": "Insulated stainless steel water bottle that keeps drinks cold for 24 hours.",
+    "rating": 4.6,
+    "reviews": 1876,
+    "inStock": true
+  },
+  {
+    "id": 10,
+    "name": "Ergonomic Office Chair",
+    "category": "Home",
+    "price": 399.99,
+    "image": "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=400&fit=crop",
+    "description": "Professional ergonomic office chair with lumbar support and breathable mesh.",
+    "rating": 4.8,
+    "reviews": 3422,
+    "inStock": true
+  }
+]
