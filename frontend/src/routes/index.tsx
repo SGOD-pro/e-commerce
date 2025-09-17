@@ -5,7 +5,7 @@ import { ProductCarousel } from "~/components/home/ProductCarousel";
 import { $, component$, useSignal, useVisibleTask$ } from "@builder.io/qwik";
 import { ALL_CATEGORIES_QUERY, graphqlRequest, PRODUCTS_QUERY } from "~/lib/Fetcher";
 import { Category, ProductNew } from "../..";
-
+import { Toaster } from 'qwik-sonner'
 
 
 const Index = component$(() => {

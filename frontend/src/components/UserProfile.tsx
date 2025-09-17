@@ -1,18 +1,10 @@
 import { User, Settings, Heart, Package, LogOut, CreditCard } from "~/icons";
 import { Button } from "~/components/ui/button";
-// import {
-//   DropdownMenu,
-//   DropdownMenuContent,
-//   li,
-//   DropdownMenuLabel,
-//   div class="divider",
-//   DropdownMenuTrigger,
-// } from "@/components/ui/dropdown-menu";
+
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { $, CSSProperties } from "@builder.io/qwik";
-import { cn } from "~/lib/utils";
-// import { useToast } from "@/hooks/use-toast";
+import { Link } from "@builder.io/qwik-city";
 
 interface UserProfileProps {
   isAuthenticated?: boolean;
@@ -47,27 +39,30 @@ export const UserProfile = ({
     return (
       <>
         <Button
-          variant="ghost"
-          size="sm"
+          variant="default"
+          size="icon"
           popovertarget="popover-1"
           style={{ anchorName: "--anchor-1" } as CSSProperties}
+          class={"rounded-full [&_svg]:size-6"}
         >
-          <User class="h-5 w-5" />
+          <User class="" />
         </Button>
         <ul
-          class="dropdown menu w-52 rounded-box bg-base-100 shadow-sm"
+          class="dropdown dropdown-end menu w-52 rounded-box bg-base-100 shadow-sm"
           popover="auto"
           id="popover-1"
           style="position-anchor:--anchor-1"
         >
-          <label class="label">Account</label>
+          <label class="label px-4">Account</label>
 
-          <div class="divider" />
+          <div class="divider my-0" />
           <li onClick$={() => handleMenuAction("Sign In")}>
-            <div class="flex items-center gap-3">
-              <User />
-              Sign In
-            </div>
+            <Link href="/auth/signin">
+              <div class="flex items-center gap-3">
+                <LogOut />
+                Sign In
+              </div>
+            </Link>
           </li>
 
           <li onClick$={() => handleMenuAction("Create Account")}>
@@ -93,8 +88,8 @@ export const UserProfile = ({
         <Avatar class="h-8 w-8">
           <AvatarImage src={user.avatar || ""} alt={user.name} />
           <AvatarFallback class="bg-surface">
-            {user.name
-              .split(" ")
+            {user?.name
+              ?.split(" ")
               .map((n) => n[0])
               .join("")}
           </AvatarFallback>

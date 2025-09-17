@@ -1,5 +1,10 @@
 import { component$, useSignal, $ } from "@builder.io/qwik";
-import { Link, routeLoader$ } from "@builder.io/qwik-city";
+import {
+  DocumentHead,
+  Link,
+  routeLoader$,
+} from "@builder.io/qwik-city";
+
 import {
   ArrowRight,
   StarFill,
@@ -113,7 +118,7 @@ export default component$(() => {
                   i < Math.floor(product.value.averageRating || 0) ? (
                     <StarFill key={i} />
                   ) : (
-                    <Star key={i}/>
+                    <Star key={i} />
                   )
                 )}
               </div>
@@ -213,3 +218,47 @@ export default component$(() => {
     </div>
   );
 });
+
+// 3. export head to set metadata
+export const head: DocumentHead = () => {
+  const prod = useProduct();
+
+  if (!prod) {
+    return {
+      title: "Product not found",
+      meta: [
+        {
+          name: "description",
+          content: "The product you are looking for does not exist.",
+        },
+      ],
+    };
+  }
+
+  const productTitle = prod.value?.title ?? "Product";
+  const productDescription =
+    prod.value?.description?.join(" ") ?? `Buy ${productTitle} from My Store`;
+  const imageUrl = prod.value?.images?.[0]?.large ?? "/default-image.png";
+
+  return {
+    title: `${productTitle} — My Store`,
+    meta: [
+      {
+        name: "description",
+        content: productDescription,
+      },
+      {
+        property: "og:title",
+        content: productTitle,
+      },
+      {
+        property: "og:description",
+        content: productDescription,
+      },
+      {
+        property: "og:image",
+        content: imageUrl,
+      },
+    ],
+  };
+};

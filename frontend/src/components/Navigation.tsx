@@ -1,4 +1,4 @@
-import { $, component$, useSignal } from "@builder.io/qwik";
+import { $, component$, useContext, useSignal, useStore } from "@builder.io/qwik";
 import { Link, useNavigate } from "@builder.io/qwik-city";
 import { ShoppingCart, Search, Menu, X, Cart } from "~/icons";
 import { Button } from "~/components/ui/button";
@@ -6,6 +6,8 @@ import { Input } from "~/components/ui/input";
 // import ThemeToggle from '@/components/ThemeToggle';
 import { UserProfile } from "~/components/UserProfile";
 import { cn } from "~/lib/utils";
+import { HomeContent } from "~/context/store";
+import { Auth } from "~/context/auth";
 
 interface NavigationProps {
   cartItemCount?: number;
@@ -17,6 +19,7 @@ export default component$((props: NavigationProps) => {
   const navigate = useNavigate();
 
   const cartItemCount = props.cartItemCount ?? 2;
+  const auth = useContext(Auth);
 
   const handleSubmit = $((ev: Event) => {
     ev.preventDefault();
@@ -76,7 +79,7 @@ export default component$((props: NavigationProps) => {
               </Button>
             </Link>
 
-            <UserProfile isAuthenticated={true} />
+            <UserProfile isAuthenticated={auth.isAuth} user={{email: auth.email, name: auth.name}} />
           </div>
 
           {/* Mobile Menu Button */}
@@ -144,7 +147,7 @@ export default component$((props: NavigationProps) => {
               </Link>
 
               <div onClick$={() => (isMenuOpen.value = false)}>
-                <UserProfile isAuthenticated={true} />
+                <UserProfile isAuthenticated={false} />
               </div>
             </div>
           </div>

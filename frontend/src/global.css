@@ -270,3 +270,7 @@
     background: var(--gradient-subtle);
   }
 }
+
+*::selection{
+  @apply bg-foreground text-background;
+}

@@ -1,116 +1,144 @@
-import { $, component$, useSignal, type Signal } from "@builder.io/qwik";
+import {
+  $,
+  component$,
+  useSignal,
+  useVisibleTask$,
+} from "@builder.io/qwik";
 import { Button } from "~/components/ui/button";
 import { ProductCard } from "~/components/ProductCard";
 import { NavArrowLeft, NavArrowRight } from "~/icons";
-import { ProductNew } from "../../..";
+import type { EmblaCarouselType } from "embla-carousel";
 
 interface ProductCarouselProps {
   title: string;
-  subtitle: string;
-  products: ProductNew[]; // 👈 use Signal
+  subtitle?: string;
+  products: any[]; // replace with ProductNew[]
 }
 
 export const ProductCarousel = component$<ProductCarouselProps>(
   ({ title, subtitle, products }) => {
-    const currentIndex = useSignal(0);
-    const itemsPerPage = 4;
+    const viewportRef = useSignal<HTMLDivElement | undefined>();
+    const emblaApi = useSignal<EmblaCarouselType | null>(null);
+    const canScrollPrev = useSignal(false);
+    const canScrollNext = useSignal(false);
 
-    const maxIndex = Math.max(0, Math.ceil(products.length / itemsPerPage) - 1);
+    useVisibleTask$(async ({ cleanup,track }) => {
 
-    const nextSlide = $(() => {
-      currentIndex.value =
-        currentIndex.value >= maxIndex ? 0 : currentIndex.value + 1;
+      track(() => viewportRef.value);
+      if (!viewportRef.value) {
+        console.warn("[Embla] viewportRef is not set. Aborting init.");
+        return;
+      }
+
+      let embla: EmblaCarouselType | null = null;
+
+      try {
+        const EmblaModule = await import("embla-carousel");
+        const EmblaCtor = EmblaModule?.default ?? EmblaModule;
+        console.log("[Embla] module loaded:", !!EmblaCtor);
+
+        // initialize Embla on the viewport element
+        embla = EmblaCtor(viewportRef.value!, {
+          loop: false,
+          align: "start",
+          containScroll: "trimSnaps",
+        });
+
+        emblaApi.value = embla;
+
+        const updateButtons = () => {
+          canScrollPrev.value = !!embla && embla.canScrollPrev();
+          canScrollNext.value = !!embla && embla.canScrollNext();
+        };
+
+        embla.on("init", updateButtons);
+        embla.on("select", updateButtons);
+        embla.on("reInit", updateButtons);
+        window.addEventListener("load", () => embla?.reInit());
+
+        updateButtons();
+      } catch (err) {
+        console.error("[Embla] failed to init:", err);
+      }
+
+      cleanup(() => {
+        try {
+          embla?.destroy();
+        } catch (e) {
+        }
+        emblaApi.value = null;
+      });
     });
 
-    const prevSlide = $(() => {
-      currentIndex.value =
-        currentIndex.value <= 0 ? maxIndex : currentIndex.value - 1;
+    const scrollPrev = $(() => {
+      if (!emblaApi.value) {
+        console.warn("[Embla] scrollPrev called but emblaApi not ready");
+        return;
+      }
+      emblaApi.value.scrollPrev();
     });
 
-    if (products.length === 0) return null;
+    const scrollNext = $(() => {
+      if (!emblaApi.value) {
+        console.warn("[Embla] scrollNext called but emblaApi not ready");
+        return;
+      }
+      emblaApi.value.scrollNext();
+    });
+
+    if (!products || products.length === 0) return null;
 
     return (
-      <div class="space-y-6">
-        <div class="flex items-center justify-between">
+      <div class="w-full">
+        <div class="flex items-center justify-between mb-4">
           <div>
-            <h2 class="text-2xl font-bold text-foreground">{title}</h2>
+            <h2 class="text-2xl font-bold">{title}</h2>
             <p class="text-muted-foreground">{subtitle}</p>
           </div>
 
-          {products.length > itemsPerPage && (
-            <div class="flex space-x-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick$={prevSlide}
-                disabled={currentIndex.value === 0}
-                class="h-8 w-8"
-              >
-                <NavArrowLeft/>
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick$={nextSlide}
-                disabled={currentIndex.value === maxIndex}
-                class="h-8 w-8"
-              >
-                <NavArrowRight/>
-              </Button>
-            </div>
-          )}
+          <div class="flex gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick$={scrollPrev}
+              disabled={!canScrollPrev.value}
+              class="h-8 w-8 rounded-md disabled:opacity-50"
+              type="button"
+            >
+              <NavArrowLeft class="h-4 w-4" />
+              <span class="sr-only">Previous slide</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick$={scrollNext}
+              disabled={!canScrollNext.value}
+              class="h-8 w-8 rounded-md disabled:opacity-50"
+              type="button"
+            >
+              <NavArrowRight class="h-4 w-4" />
+              <span class="sr-only">Next slide</span>
+            </Button>
+          </div>
         </div>
 
-        {/* Carousel container */}
-        <div class="relative overflow-hidden">
-          <div
-            class="flex transition-transform duration-500 ease-in-out"
-            style={{
-              transform: `translateX(-${currentIndex.value * 100}%)`,
-            }}
-          >
-            {Array.from({
-              length: Math.ceil(products.length / itemsPerPage),
-            }).map((_, pageIndex) => (
-              <div key={pageIndex} class="flex w-full flex-shrink-0 gap-4">
-                {products
-                  .slice(
-                    pageIndex * itemsPerPage,
-                    (pageIndex + 1) * itemsPerPage
-                  )
-                  .map((product) => (
-                    <div key={product.id} class="w-1/4 flex-shrink-0">
-                      <ProductCard
-                        product={product}
-                        onQuickView$={() => console.log("Quick view:", product)}
-                        onAddToCart$={() =>
-                          console.log("Add to cart:", product)
-                        }
-                      />
-                    </div>
-                  ))}
+        <div class="overflow-hidden" ref={viewportRef}>
+          <div class="flex">
+            {products.map((product) => (
+              <div
+                key={product.id}
+                class="flex-none w-full sm:w-1/2 lg:w-1/4 pr-4 select-none"
+              >
+                <ProductCard
+                  product={product}
+                  onQuickView$={() => console.log("Quick view:", product)}
+                  onAddToCart$={() => console.log("Add to cart:", product)}
+                />
               </div>
             ))}
           </div>
         </div>
-
-        {/* Dots indicator */}
-        {products.length > itemsPerPage && (
-          <div class="flex justify-center space-x-2">
-            {Array.from({ length: maxIndex + 1 }).map((_, index) => (
-              <button
-                key={index}
-                onClick$={() => (currentIndex.value = index)}
-                class={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  index === currentIndex.value
-                    ? "bg-foreground scale-110"
-                    : "bg-muted-foreground hover:bg-foreground/60"
-                }`}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
-          </div>
-        )}
       </div>
     );
   }
