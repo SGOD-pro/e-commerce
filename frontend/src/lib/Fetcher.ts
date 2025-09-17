@@ -1,36 +1,36 @@
-export const GRAPHQL_ENDPOINT = 'http://localhost:8000/products/graphql';
-export async function graphqlRequest<T>(
-  query: string,
-  variables?: Record<string, any>
-): Promise<T> {
-  try {
-    const response = await fetch(GRAPHQL_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query,
-        variables,
-      }),
-    });
+  export const GRAPHQL_ENDPOINT = 'http://localhost:8000/products/graphql';
+  export async function graphqlRequest<T>(
+    query: string,
+    variables?: Record<string, any>
+  ): Promise<T> {
+    try {
+      const response = await fetch(GRAPHQL_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          variables,
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.errors) {
+        throw new Error(result.errors[0].message);
+      }
+
+      return result.data;
+    } catch (error) {
+      console.error('GraphQL Request Error:', error);
+      throw error;
     }
-
-    const result = await response.json();
-    
-    if (result.errors) {
-      throw new Error(result.errors[0].message);
-    }
-
-    return result.data;
-  } catch (error) {
-    console.error('GraphQL Request Error:', error);
-    throw error;
   }
-}
 
 export const PRODUCTS_QUERY = `
   query GetProducts(
@@ -38,6 +38,7 @@ export const PRODUCTS_QUERY = `
     $minPrice: Float
     $maxPrice: Float
     $minRating: Float
+    $ratingNumber:Int
     $search: String
     $sortBy: String
     $sortDir: Int
@@ -49,6 +50,7 @@ export const PRODUCTS_QUERY = `
       minPrice: $minPrice
       maxPrice: $maxPrice
       minRating: $minRating
+      ratingNumber:$ratingNumber
       search: $search
       sortBy: $sortBy
       sortDir: $sortDir
@@ -119,6 +121,11 @@ export const PRODUCTS_COUNT_QUERY = `
 `;
 export const ALL_CATEGORIES_QUERY = `
   query GetAllCategories {
-    allCategories
+  allCategories {
+    name
+    count
+    image
   }
+}
+
 `;

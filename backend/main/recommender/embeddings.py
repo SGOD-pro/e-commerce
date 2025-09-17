@@ -2,109 +2,94 @@ from main.db.mongo import products_collection
 from langchain_nvidia_ai_endpoints import NVIDIAEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
-from main.core.config import settings
 from qdrant_client.models import VectorParams, Distance
+from langchain.schema import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from time import sleep
+import asyncio
 
+# Initialize Qdrant client
 qdrant_client = QdrantClient(
-    url=settings.QDRANT_URL,
-    api_key=settings.QDRANT_KEY,
-    timeout=300
+    url="https://2c15c181-6b77-4ea0-b83a-cbbbb4ef9aee.eu-west-1-0.aws.cloud.qdrant.io:6333",
+    api_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.JzBM1qzhmRFLtznrr4_MhbQdvSBWMsDulht6KsrG5_A",
 )
 
+# Initialize embeddings
 embeddings = NVIDIAEmbeddings(
-    model="nvidia/nv-embedqa-mistral-7b-v2",
-    api_key=settings.NIM_API,
+    model="nvidia/nv-embed-v1",
+    api_key="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",
     truncate="NONE",
 )
 
+# Token-based splitter to avoid exceeding model limits
+splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+    chunk_size=512,  # max tokens for NVIDIA embedding
+    chunk_overlap=50
+)
+
+def build_text_chunks(product: dict):
+    """Combine product fields into text and split into token-safe chunks"""
+    text = " ".join([
+        product.get("title", ""),
+        " ".join(product.get("description", []) or []),
+        " ".join(product.get("features", []) or []),
+        " ".join(product.get("categories", []) or []),
+        product.get("brand") or "",
+    ])
+    return splitter.split_text(text)
+
 async def index_products():
-    cursor =  await products_collection.find().sort("_id", -1).skip(9320).to_list()
+    cursor = await products_collection.find().sort("_id").skip(10692).to_list()
+    print("Indexing products...", len(cursor))
 
-    print("Indexing products...",len(cursor))
-    if not qdrant_client.collection_exists(settings.QDRANT_COLLECTION):
+    # Create Qdrant collection if it doesn't exist
+    if not qdrant_client.collection_exists("products"):
         qdrant_client.create_collection(
-            collection_name=settings.QDRANT_COLLECTION,
+            collection_name="products",
             vectors_config=VectorParams(size=4096, distance=Distance.COSINE)
         )
 
-
     vector_store = QdrantVectorStore(
         client=qdrant_client,
-        collection_name=settings.QDRANT_COLLECTION,
+        collection_name="products",
         embedding=embeddings,
     )
 
-    texts, metadatas = [], []
-    # cursor=cursor[7948:]
+    # Prepare Documents
+    all_docs = []
     for product in cursor:
-        #print(type(product))
-        text = " ".join([
-            product.get("title", ""),
-            " ".join(product.get("description", []) or []),
-            " ".join(product.get("features", []) or []),
-        ]).strip()
-        
-        if not text:  
+        chunks = build_text_chunks(product)
+        if not chunks:
             continue
-        texts.append(text[:512])
-        metadatas.append({
-            "id": str(product["_id"]),
-            "title": product.get("title"),
-            "categories": product.get("categories"),
-            "average_rating": product.get("average_rating"),
-            "store": product.get("store"),
-            "price": product.get("price"),
-        })
-    #     if len(texts) >= 500:
-    #         await vector_store.add_texts(texts=[text],metadatas=[metadatas])
-    #         print(f"Indexed {len(metadatas)} products...")
-    #         texts, metadatas = [], []
-    # print(len(texts), len(metadatas))
+        for chunk in chunks:
+            doc = Document(
+                page_content=chunk,
+                metadata={
+                    "id": str(product["_id"]),
+                    "title": product.get("title"),
+                    "categories": product.get("categories"),
+                    "main_category": product.get("main_category"),
+                    "average_rating": product.get("average_rating"),
+                    "store": product.get("store"),
+                    "price": product.get("price"),
+                }
+            )
+            all_docs.append(doc)
 
-    print("Final batch indexing...", len(texts))
-    await vector_store.aadd_texts(texts=texts, metadatas=metadatas)
-    
+    # Index in batches
+    batch_size = 150
+    for i in range(0, len(all_docs), batch_size):
+        print(f"Indexing batch {i} - {i+batch_size}")
+        await vector_store.aadd_documents(all_docs[i:i+batch_size])
+        print(f"Indexing complete {i} - {i+batch_size}")
+        sleep(1)
+        print("Restarted")
+
     print("Indexing completed.")
+    qdrant_client.close()
 
-
-async def index_categories():
-    # fetch distinct categories
-    categories = await products_collection.distinct("categories")
-
-    # clean + flatten (because some might be lists)
-    flat_categories = []
-    for c in categories:
-        if isinstance(c, list):
-            flat_categories.extend(c)
-        elif c:
-            flat_categories.append(c)
-
-    # remove duplicates
-    flat_categories = list(set(flat_categories))
-    print(f"Indexing {len(flat_categories)} categories...")
-    # create collection if not exists
-    if not qdrant_client.collection_exists(settings.QDRANT_CATEGORY_COLLECTION):
-        qdrant_client.create_collection(
-            collection_name=settings.QDRANT_CATEGORY_COLLECTION,
-            vectors_config=VectorParams(size=4096, distance=Distance.COSINE)
-        )
-
-    # vector store
-    vector_store = QdrantVectorStore(
-        client=qdrant_client,
-        collection_name=settings.QDRANT_CATEGORY_COLLECTION,
-        embedding=embeddings,
-    )
-    from time import sleep
-    for i in range(0, len(flat_categories), 500):
-        metadatas = [{"category": c} for c in flat_categories[i:i+500]]
-        print(i)
-        await vector_store.aadd_texts(flat_categories[i:i+500], metadatas=metadatas)
-        print(sleep)
-        sleep(2)
-    
-    print(i)
-    # metadatas = [{"category": c} for c in flat_categories]
-    # await vector_store.aadd_texts(flat_categories, metadatas=metadatas)
-
-    print(f"✅ Complete")
+if __name__ == "__main__":
+    try:
+        asyncio.run(index_products())
+    except Exception as e:
+        print(e)

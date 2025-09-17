@@ -1,10 +1,18 @@
-from pydantic import BaseModel
-from typing import Optional
-from bson import ObjectId
+from pydantic import BaseModel,Field
+from typing import Optional,Literal
+from datetime import datetime 
+# ✅ For requests (creating a new interaction)
+class InteractionCreate(BaseModel):
+    user_id: str   # ObjectId but as string in requests
+    product_id: str
+    action: Literal["favorite", "cart", "purchase", "view"] = "view"
+    timestamp: datetime
 
-class Interaction(BaseModel):
-    id: Optional[ObjectId]
+# ✅ For responses (returning interaction with ID & timestamp)
+class InteractionResponse(BaseModel):
+    id: str = Field(alias="_id")
     user_id: str
     product_id: str
-    action: str  # e.g., "view", "add_to_cart", "purchase"
-    timestamp: Optional[str]
+    action: str
+    timestamp: datetime
+

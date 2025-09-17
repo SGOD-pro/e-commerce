@@ -1,12 +1,9 @@
 import { component$ } from "@builder.io/qwik";
 import { Link } from "@builder.io/qwik-city";
+import { Category } from "../../..";
 // import { Card } from "~/components/ui/card";
 
-interface Category {
-  name: string;
-  count: number;
-  image: string;
-}
+
 
 interface CategoryGridProps {
   categories: Category[];
@@ -28,7 +25,7 @@ const CategoryGrid = component$<CategoryGridProps>(({ categories }) => {
               class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               loading="lazy"
             />
-            <div class="absolute inset-0 bg-foreground/40 group-hover:bg-foreground/30 transition-colors duration-300" />
+            <div class="absolute inset-0 bg-card/40 group-hover:bg-card/30 transition-colors duration-300" />
             <div class="absolute inset-0 flex flex-col justify-center items-center text-white">
               <h3 class="font-semibold text-sm md:text-lg text-center capitalize">
                 {category.name}

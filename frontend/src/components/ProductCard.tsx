@@ -29,10 +29,10 @@ export const ProductCard = component$<ProductCardProps>(
     const isImageLoading = useSignal(true);
     const imageError = useSignal(false);
 
-    const productSlug = product.id
+    const productSlug = product.id 
 
     return (
-      <div class={`card-product border group bg-card h-full ${className || ""}`}>
+      <div class={`card-product group bg-card h-full ${className || ""}`}>
         {/* Product Image */}
         <figure>
           <Link href={`/product/${productSlug}`}>
@@ -68,12 +68,12 @@ export const ProductCard = component$<ProductCardProps>(
                   variant="secondary"
                   size="sm"
                   class=""
-                  onClick$={(e, el) => {
+                  onClick$={(e) => {
                     e.preventDefault();
                     onQuickView$?.(product);
                   }}
                 >
-                  <Eye/>
+                  <Eye/>``
                   Quick View
                 </Button>
               </div>
@@ -91,7 +91,7 @@ export const ProductCard = component$<ProductCardProps>(
         <div class="p-4 space-y-3 card-body bg-surface">
           {/* Category */}
           <div class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            {product.categories.join(", ")}
+            {product.categories[0]}
           </div>
 
           {/* Product Name */}
@@ -102,7 +102,7 @@ export const ProductCard = component$<ProductCardProps>(
           {/* Rating */}
           <div class="flex items-center space-x-2">
             <Badge class="flex items-center">
-              <StarFill size={16}/>
+              <StarFill size={14}/>
               <span class="text-xs font-medium ml-1">{product.averageRating}</span>
             </Badge>
             <span class="text-xs text-muted-foreground">

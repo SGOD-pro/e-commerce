@@ -5,7 +5,7 @@ from bson import ObjectId
 
 class ProductImage(BaseModel):
     thumb: Optional[str] = None
-    large: str
+    large: Optional[str]=None
     variant: Optional[str] = None
     hi_res: Optional[str] = None
 
@@ -16,7 +16,7 @@ class Product(BaseModel):
     description: Optional[List[str]] = None
     features: Optional[List[str]] = None
     categories: List[str]
-    # main_category: Optional[str] = None
+    main_category: Optional[str] = None
     store: Optional[str] = None
     brand: Optional[str] = None
     material: Optional[str] = None

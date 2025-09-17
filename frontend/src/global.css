@@ -249,7 +249,7 @@
 
   /* Card Variants */
   .card-product {
-    @apply border rounded-lg overflow-hidden transition-all duration-300 hover:shadow-lg;
+    @apply rounded-lg overflow-hidden transition-all duration-300 hover:shadow-lg;
   }
 
   .card-minimal {

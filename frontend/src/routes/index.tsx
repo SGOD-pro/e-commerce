@@ -2,66 +2,59 @@ import { HeroSection } from "~/components/home/HeroSection";
 import CategoryGrid from "~/components/home/CategoryGrid";
 import { ProductCarousel } from "~/components/home/ProductCarousel";
 
-import productsData from "~/data/products.json";
 import { $, component$, useSignal, useVisibleTask$ } from "@builder.io/qwik";
-import { graphqlRequest, PRODUCTS_QUERY } from "~/lib/Fetcher";
-import { Product, ProductNew } from "../..";
+import { ALL_CATEGORIES_QUERY, graphqlRequest, PRODUCTS_QUERY } from "~/lib/Fetcher";
+import { Category, ProductNew } from "../..";
 
-// Add slugs to products for SEO-friendly URLs
-const productsWithSlugs = productsData.map((product) => ({
-  ...product,
-  slug: product.name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, ""),
-}));
+
 
 const Index = component$(() => {
-  const products = useSignal<ProductNew[]>([]);
   const featuredProducts = useSignal<ProductNew[]>([]);
-  const recommendedProducts = useSignal<Product[]>(productsData.slice(0, 8));
-  const topRatedProducts = useSignal<Product[]>(productsData.slice(0, 8));
-  const recentProducts = useSignal<Product[]>(productsData.slice(0, 8));
-
-  // Get unique categories for homepage display
-  const categories = Array.from(
-    new Set(productsData.map((p) => p.category))
-  ).map((category) => ({
-    name: category,
-    count: productsData.filter((p) => p.category === category).length,
-    image: productsData.find((p) => p.category === category)?.image || "",
-  }));
+  const recommendedProducts = useSignal<ProductNew[]>([]);
+  const topRatedProducts = useSignal<ProductNew[]>([]);
+  const recentProducts = useSignal<ProductNew[]>([]);
+  const categories=useSignal<Category[]>([])
 
   useVisibleTask$(async () => {
-    graphqlRequest<{ products: ProductNew[] }>(PRODUCTS_QUERY).then((data) => {
-      products.value = data.products;
-      console.log(products.value);
-      const featured = data.products
-        .filter(
-          (p) => p.averageRating || (0 >= 4.5 && p.ratingNumber) || 0 > 1000
-        )
-        .slice(0, 8);
-        console.log(featured)
-      featuredProducts.value = featured;
+    const fetchTopRated = graphqlRequest<{ products: ProductNew[] }>(
+      PRODUCTS_QUERY,
+      {
+        minRating: 4,
+        limit: 10,
+        sortBy: "average_rating"
+      }
+    ).then((data) => {
+      topRatedProducts.value = data.products;
     });
-
-    // Recommended products (mix of categories)
-    const recommended = [...productsData]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 12);
-    recommendedProducts.value = recommended;
-
-    // Top rated products
-    const topRated = [...productsData]
-      .sort((a, b) => b.rating - a.rating)
-      .slice(0, 8);
-    topRatedProducts.value = topRated;
-
-    // Recent/newest products (by ID)
-    const recent = [...productsData].sort((a, b) => b.id - a.id).slice(0, 8);
-    recentProducts.value = recent;
+    const fetchRecommended = graphqlRequest<{ products: ProductNew[] }>(
+      PRODUCTS_QUERY,
+      {
+        limit: 8,
+      }
+    ).then((data) => {
+      recommendedProducts.value = data.products;
+    });
+    const fetchRecent = graphqlRequest<{ products: ProductNew[] }>(
+      PRODUCTS_QUERY
+    ).then((data) => {
+      recentProducts.value = data.products;
+    });
+    const fetchfeaturedProducts = graphqlRequest<{ products: ProductNew[] }>(
+      PRODUCTS_QUERY,
+      {
+        limit: 10,
+        minPrice: 10,
+        maxPrice: 50,
+        sortBy: "rating_number",
+      }
+    ).then((data) => {
+      featuredProducts.value = data.products;
+    });
+    const fetchCategory=graphqlRequest<{allCategories: Category[]}>(ALL_CATEGORIES_QUERY).then((data)=>{
+      console.log(data)
+      categories.value=data.allCategories
+    })
   });
-
 
   return (
     <div class="min-h-screen bg-background">
@@ -80,7 +73,7 @@ const Index = component$(() => {
                 Discover products in your favorite categories
               </p>
             </div>
-            <CategoryGrid categories={categories} />
+            <CategoryGrid categories={categories.value} />
           </div>
         </section>
 
@@ -95,39 +88,38 @@ const Index = component$(() => {
           </div>
         </section>
 
-
         {/* Top Rated Products */}
-        {/* <section class="py-12 bg-card">
+        <section class="py-12 bg-card">
           <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <ProductCarousel
               title="Top Rated"
               subtitle="Highest rated products by our customers"
-              products={products}
+              products={topRatedProducts.value}
             />
           </div>
-        </section> */}
+        </section>
 
         {/* Recommended Products */}
-        {/* <section class="py-12">
+        <section class="py-12">
           <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <ProductCarousel
               title="Recommended for You"
               subtitle="Products we think you'll love"
-              products={recommendedProducts}
+              products={recommendedProducts.value}
             />
           </div>
-        </section> */}
+        </section>
 
         {/* New Arrivals */}
-        {/* <section class="py-12 bg-surface">
+        <section class="py-12 bg-card">
           <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <ProductCarousel
               title="New Arrivals"
               subtitle="Latest products added to our collection"
-              products={recentProducts}
+              products={recentProducts.value}
             />
           </div>
-        </section> */}
+        </section>
       </main>
 
       {/* Footer */}
@@ -144,7 +136,7 @@ const Index = component$(() => {
             <div>
               <h4 class="font-medium mb-4 text-foreground">Shop</h4>
               <ul class="space-y-2 text-sm text-muted-foreground">
-                {categories.map((category, i) => (
+                {categories.value.map((category, i) => (
                   <li key={i}>
                     <a
                       href={`/search?category=${encodeURIComponent(category.name as string)}`}

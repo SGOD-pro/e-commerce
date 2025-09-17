@@ -4,19 +4,6 @@ import { ProductCard } from "~/components/ProductCard";
 import { NavArrowLeft, NavArrowRight } from "~/icons";
 import { ProductNew } from "../../..";
 
-interface Product {
-  id: number;
-  name: string;
-  category: string;
-  price: number;
-  image: string;
-  description: string;
-  rating: number;
-  reviews: number;
-  inStock: boolean;
-  slug?: string;
-}
-
 interface ProductCarouselProps {
   title: string;
   subtitle: string;

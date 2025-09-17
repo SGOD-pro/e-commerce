@@ -30,3 +30,8 @@ export interface ProductNew {
   price?: number;
   images: ProductImage[];
 }
+interface Category {
+  name: string;
+  count?: number;
+  image?: string;
+}

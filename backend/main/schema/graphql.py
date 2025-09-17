@@ -7,11 +7,11 @@ from strawberry.experimental.pydantic import type as pydantic_type
 from strawberry.types import Info 
 from fastapi import HTTPException
 from bson import ObjectId
-
-from main.db.mongo import products_collection  # -> from db.mongo import products_coll
-# from models.products import ProductModel  # optionally for pydantic-based validations
+from main.db.mongo import products_collection,interactions_collection
 from main.models.products import Product as ProductModel, ProductImage as ProductImageModel
-
+from main.recommender.engine import search_products
+from main.models.interactions import InteractionCreate
+import datetime
 # ---------- GraphQL types ----------
 @pydantic_type(model=ProductImageModel, all_fields=True)
 class ProductImageType:
@@ -21,6 +21,11 @@ class ProductImageType:
 class ProductType:
     id: strawberry.ID
 
+@strawberry.type
+class CategoryType:
+    name: str
+    count: int
+    image: str   # not List[str], pick just one image
 
 
 # ---------- Helpers ----------
@@ -80,7 +85,7 @@ def build_filter(
     min_price: Optional[float] = None,
     max_price: Optional[float] = None,
     min_rating: Optional[float] = None,
-    search: Optional[str] = None,
+    rating_number:Optional[int]=None
 ) -> dict:
     f = {}
     if categories:
@@ -94,9 +99,11 @@ def build_filter(
         f["price"] = price_q
     if min_rating is not None:
         f["average_rating"] = {"$gte": min_rating}
-    if search:
-        # requires text index on title & description
-        f["$text"] = {"$search": search}
+    if rating_number is not None:
+        f["rating_number"] = {"$gte": rating_number}
+    # if search:
+    #     # requires text index on title & description
+    #     f["$text"] = {"$search": search}
     return f
 
 
@@ -104,7 +111,7 @@ def build_sort(sort_by: Optional[str], sort_dir: int) -> List[Tuple[str, int]]:
     allowed = {
         "id": ("_id", sort_dir),
         "price": ("price", sort_dir),
-        "rating": ("average_rating", sort_dir),
+        "average_rating": ("average_rating", sort_dir),
         "title": ("title", sort_dir),
         "rating_number": ("rating_number", sort_dir),
     }
@@ -112,7 +119,13 @@ def build_sort(sort_by: Optional[str], sort_dir: int) -> List[Tuple[str, int]]:
         return [allowed[sort_by]]
     return [("_id", -1)]
 
-
+def to_mongo_doc(interaction: InteractionCreate) -> dict:
+    return {
+        "user_id": ObjectId(interaction.user_id),
+        "product_id": ObjectId(interaction.product_id),
+        "action": interaction.action,
+        "timestamp": interaction.timestamp
+    }
 # ---------- Selection projection helper (optional) ----------
 def get_requested_fields(info: Info) -> List[str]:
     """
@@ -165,21 +178,39 @@ def make_projection(fields: List[str]) -> Optional[Dict[str, int]]:
 # ---------- GraphQL Query ----------
 @strawberry.type
 class Query:
-     
+
     @strawberry.field
-    async def product_by_id(self, id: strawberry.ID, info: Info) -> Optional[ProductType]:
+    async def product_by_id(
+        self,
+        id: strawberry.ID,
+        info: Info,
+    ) -> Optional[ProductType]:
+        print("by id");
         try:
             oid = ObjectId(str(id))
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid id")
+        
         projection = make_projection(get_requested_fields(info))
         doc = await products_collection.find_one({"_id": oid}, projection=projection)
+        user = info.context.get("user")
+        if user and doc:
+            interaction = InteractionCreate(
+                user_id=str(user),     # ensure string
+                product_id=str(oid),   # ensure string
+                action="view",
+                timestamp=datetime.datetime.now()
+            )
+
+            mongo_doc = to_mongo_doc(interaction)
+            await interactions_collection.insert_one(mongo_doc)
         if not doc:
             return None
-        # ensure _id present for id
+        
+        # fallback if _id not projected
         if "_id" not in doc and projection is not None:
-            # if projection omitted _id, fetch it
             doc = await products_collection.find_one({"_id": oid})
+        
         return doc_to_product(doc)
 
 
@@ -188,60 +219,89 @@ class Query:
         self,
         info: Info,
         categories: Optional[List[str]] = None,
-        min_price: Optional[float] = 10,
+        min_price: Optional[float] = 1,
         max_price: Optional[float] = None,
         min_rating: Optional[float] = 1,
+        rating_number: Optional[int] = 0,
         search: Optional[str] = None,
         sort_by: Optional[str] = "id",
-        sort_dir: int= -1,
+        sort_dir: int = -1,
         limit: int = 20,
         offset: int = 0,
     ) -> List[ProductType]:
-            print("products")
-            f = build_filter(categories, min_price, max_price, min_rating, search)
-            print(f)
-            sort_spec = build_sort(sort_by, sort_dir)
-            requested = get_requested_fields(info)
-            projection = make_projection(requested)
-            # fetch documents with projection to reduce I/O
-            cursor = products_collection.find(f, projection=projection).sort(sort_spec).skip(offset).limit(limit)
-            docs = await cursor.to_list(length=limit)
-        # if projection removed _id for id mapping, we should fetch original doc or set id manually (we ensure _id in projection)
-        # doc_to_product expects _id present  results: List[ProductType] = []
-            print("docs",docs[0])
-            results: List[ProductType] = []
-            for d in docs:
-                p = doc_to_product(d)
-                if p:
-                        results.append(p)
-            print(results[0])
-            return results
+        """
+            Hybrid search:
+            - If `search` is provided -> semantic search from Qdrant
+            - Apply Mongo filters on final candidate set
+            - Otherwise fallback to Mongo filter + sort
+        """
+        results: List[ProductType] = []
 
+        mongo_ids: List[ObjectId] = []
+        if search:
+            mongo_ids=await search_products(search, limit)
+            
+
+
+        f = build_filter(categories, min_price, max_price, min_rating,rating_number) 
+        if mongo_ids:
+            f["_id"] = {"$in": mongo_ids}
+        sort_spec = build_sort(sort_by, sort_dir) 
+        requested = get_requested_fields(info) 
+        projection = make_projection(requested)
+        print(f)
+        docs = await products_collection.find(f, projection=projection).sort(sort_spec).skip(offset).limit(limit).to_list(length=limit)
+        
+        print("docs",len(docs))
+        for d in docs: 
+            p = doc_to_product(d) 
+            if p: 
+                results.append(p) 
+        
+        return results
+    
     @strawberry.field
-    async def products_count(
-        self,
-        categories: Optional[List[str]] = None,
-        min_price: Optional[float] = None,
-        max_price: Optional[float] = None,
-        min_rating: Optional[float] = None,
-        search: Optional[str] = None,
-    ) -> int:
-        f = build_filter(categories, min_price, max_price, min_rating, search)
-        return await products_collection.count_documents(f)
+    async def all_categories(self) -> List[CategoryType]:
+            pipeline = [
+            {
+                "$group": {
+                    "_id": "$main_category",
+                    "count": {"$sum": 1},
+                    "images": {"$first": "$images"} 
+                }
+            },
+            {
+                "$sort": {
+                    "count": -1
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "name": "$_id",
+                    "count": 1,
+                    # pick only the first thumb inside the images array
+                    "image": {"$arrayElemAt": ["$images.large", 0]}
+                }
+            }
+        ]
 
-    @strawberry.field
-    async def all_categories(self) -> List[str]:
-        cats = await products_collection.aggregate([{
-                                                       "$group": {
-                                                            "_id": "$main_category",
-                                                       }
-                                                  }])
-        cats=await cats.to_list()
+            cats_cursor = await products_collection.aggregate(pipeline)
+            cats = await cats_cursor.to_list(length=7)
+            
+            return [CategoryType(**c) for c in cats]
 
-        seen = set(cats)
-        uniq = list(seen)
-        return uniq
+
+from fastapi import Request
+from main.auth.dependencies import auth_middleware
+async def get_context(request: Request):
+    user = None
+    try:
+        user = await auth_middleware(request)
+    except HTTPException:
+        pass  # If you want GraphQL to allow unauthenticated queries, just leave user=None
+    return {"user": user}
 
 schema = strawberry.Schema(query=Query)
 
-graphql_router = GraphQLRouter(schema)
+graphql_router = GraphQLRouter(schema,context_getter=get_context)

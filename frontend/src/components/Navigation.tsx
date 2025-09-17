@@ -9,7 +9,6 @@ import { cn } from "~/lib/utils";
 
 interface NavigationProps {
   cartItemCount?: number;
-  onSearchChange?: (query: string) => void;
 }
 
 export default component$((props: NavigationProps) => {
@@ -19,9 +18,12 @@ export default component$((props: NavigationProps) => {
 
   const cartItemCount = props.cartItemCount ?? 2;
 
-  const handleSearchChange = $((value: string) => {
-    searchQuery.value = value;
-    props.onSearchChange?.(value);
+  const handleSubmit = $((ev: Event) => {
+    ev.preventDefault();
+    const q = searchQuery.value.trim();
+    if (!q) return;
+    console.log(q)
+    navigate(`/search?q=${encodeURIComponent(q)}`);
   });
 
   return (
@@ -35,22 +37,18 @@ export default component$((props: NavigationProps) => {
 
           {/* Desktop Search Bar */}
           <div class="hidden md:flex flex-1 max-w-md mx-8">
-            <form
-              onSubmit$={(ev: Event) => {
-                ev.preventDefault();
-                const q = searchQuery.value.trim();
-                if (q) navigate(`/search?q=${encodeURIComponent(q)}`);
-              }}
-              class="relative w-full"
-            >
-              <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 " size={20} />
+            <form preventdefault:submit onSubmit$={handleSubmit} class="relative w-full">
+              <Search
+                class="absolute left-3 top-1/2 transform -translate-y-1/2 "
+                size={20}
+              />
               <Input
                 type="search"
                 placeholder="Search products..."
                 value={searchQuery.value}
-                onInput$={(e: Event) =>
-                  handleSearchChange((e.target as HTMLInputElement).value)
-                }
+                onInput$={(e: Event) => {
+                  searchQuery.value = (e.target as HTMLInputElement).value;
+                }}
                 class="pl-10 bg-base-300 border-border/50 focus:border-foreground/20"
               />
             </form>
@@ -69,7 +67,7 @@ export default component$((props: NavigationProps) => {
 
             <Link href="/cart">
               <Button variant="ghost" size="sm" class="relative">
-                <Cart/> 
+                <Cart />
                 {cartItemCount > 0 && (
                   <span class="absolute -top-1 -right-1 bg-foreground text-background text-xs rounded-full h-4 w-4 flex items-center justify-center font-medium ">
                     {cartItemCount}
@@ -105,22 +103,16 @@ export default component$((props: NavigationProps) => {
         >
           {/* Mobile Search */}
           <div class="pt-4 pb-2">
-            <form
-              onSubmit$={(ev: Event) => {
-                ev.preventDefault();
-                const q = searchQuery.value.trim();
-                if (q) navigate(`/search?q=${encodeURIComponent(q)}`);
-              }}
-              class="relative"
-            >
+            <form onSubmit$={handleSubmit} class="relative">
               <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Search products..."
                 value={searchQuery.value}
-                onInput$={(e: Event) =>
-                  handleSearchChange((e.target as HTMLInputElement).value)
-                }
+                onInput$={(e: Event) => {
+                  // ONLY update signal; no API calls here
+                  searchQuery.value = (e.target as HTMLInputElement).value;
+                }}
                 class="pl-10 bg-surface border-border/50 focus:border-foreground/20"
               />
             </form>
