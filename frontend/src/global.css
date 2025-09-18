@@ -6,9 +6,9 @@
   default: false;
   prefersdark: true;
   color-scheme: "dark";
-  --color-base-100: #030303;
-  --color-base-200: #0a0a0a;
-  --color-base-300: #111;
+  --color-base-100: #0a0a0a;
+  --color-base-200: #171717;
+  --color-base-300: #222;
   --color-base-content: #f8fafc;
   --color-primary: #e6e6e6;
   --color-primary-content: #0b0b0b;
@@ -121,7 +121,7 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: oklch(14.479% 0.00002 271.152);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);

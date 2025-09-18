@@ -7,17 +7,17 @@ from langchain.schema import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from time import sleep
 import asyncio
-
+from main.core.config import settings
 # Initialize Qdrant client
 qdrant_client = QdrantClient(
-    url="",
-    api_key="",
+    url=settings.QDRANT_URL,
+    api_key=settings.QDRANT_KEY,
 )
 
 # Initialize embeddings
 embeddings = NVIDIAEmbeddings(
     model="nvidia/nv-embed-v1",
-    api_key="",
+    api_key=settings.NIM_API,
     truncate="NONE",
 )
 

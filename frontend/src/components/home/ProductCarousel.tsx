@@ -1,9 +1,5 @@
-import {
-  $,
-  component$,
-  useSignal,
-  useVisibleTask$,
-} from "@builder.io/qwik";
+// src/components/ProductCarousel.tsx
+import { $, component$, useSignal, useVisibleTask$ } from "@builder.io/qwik";
 import { Button } from "~/components/ui/button";
 import { ProductCard } from "~/components/ProductCard";
 import { NavArrowLeft, NavArrowRight } from "~/icons";
@@ -22,8 +18,7 @@ export const ProductCarousel = component$<ProductCarouselProps>(
     const canScrollPrev = useSignal(false);
     const canScrollNext = useSignal(false);
 
-    useVisibleTask$(async ({ cleanup,track }) => {
-
+    useVisibleTask$(async ({ cleanup, track }) => {
       track(() => viewportRef.value);
       if (!viewportRef.value) {
         console.warn("[Embla] viewportRef is not set. Aborting init.");
@@ -35,9 +30,7 @@ export const ProductCarousel = component$<ProductCarouselProps>(
       try {
         const EmblaModule = await import("embla-carousel");
         const EmblaCtor = EmblaModule?.default ?? EmblaModule;
-        console.log("[Embla] module loaded:", !!EmblaCtor);
 
-        // initialize Embla on the viewport element
         embla = EmblaCtor(viewportRef.value!, {
           loop: false,
           align: "start",
@@ -64,32 +57,27 @@ export const ProductCarousel = component$<ProductCarouselProps>(
       cleanup(() => {
         try {
           embla?.destroy();
-        } catch (e) {
-        }
+        } catch (e) {}
         emblaApi.value = null;
       });
     });
 
     const scrollPrev = $(() => {
-      if (!emblaApi.value) {
-        console.warn("[Embla] scrollPrev called but emblaApi not ready");
-        return;
-      }
+      if (!emblaApi.value)
+        return console.warn("[Embla] scrollPrev called but emblaApi not ready");
       emblaApi.value.scrollPrev();
     });
 
     const scrollNext = $(() => {
-      if (!emblaApi.value) {
-        console.warn("[Embla] scrollNext called but emblaApi not ready");
-        return;
-      }
+      if (!emblaApi.value)
+        return console.warn("[Embla] scrollNext called but emblaApi not ready");
       emblaApi.value.scrollNext();
     });
 
     if (!products || products.length === 0) return null;
 
     return (
-      <div class="w-full">
+      <div class="w-full my-12">
         <div class="flex items-center justify-between mb-4">
           <div>
             <h2 class="text-2xl font-bold">{title}</h2>
@@ -102,7 +90,7 @@ export const ProductCarousel = component$<ProductCarouselProps>(
               size="icon"
               onClick$={scrollPrev}
               disabled={!canScrollPrev.value}
-              class="h-8 w-8 rounded-md disabled:opacity-50"
+              class="disabled:opacity-40"
               type="button"
             >
               <NavArrowLeft class="h-4 w-4" />
@@ -114,7 +102,7 @@ export const ProductCarousel = component$<ProductCarouselProps>(
               size="icon"
               onClick$={scrollNext}
               disabled={!canScrollNext.value}
-              class="h-8 w-8 rounded-md disabled:opacity-50"
+              class="disabled:opacity-40"
               type="button"
             >
               <NavArrowRight class="h-4 w-4" />
@@ -123,6 +111,7 @@ export const ProductCarousel = component$<ProductCarouselProps>(
           </div>
         </div>
 
+        {/* Embla viewport (preserved logic) */}
         <div class="overflow-hidden" ref={viewportRef}>
           <div class="flex">
             {products.map((product) => (
@@ -130,11 +119,13 @@ export const ProductCarousel = component$<ProductCarouselProps>(
                 key={product.id}
                 class="flex-none w-full sm:w-1/2 lg:w-1/4 pr-4 select-none"
               >
-                <ProductCard
-                  product={product}
-                  onQuickView$={() => console.log("Quick view:", product)}
-                  onAddToCart$={() => console.log("Add to cart:", product)}
-                />
+                <div className="h-full">
+                  <ProductCard
+                    product={product}
+                    onQuickView$={() => console.log("Quick view:", product)}
+                    onAddToCart$={() => console.log("Add to cart:", product)}
+                  />
+                </div>
               </div>
             ))}
           </div>

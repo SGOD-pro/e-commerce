@@ -94,12 +94,12 @@ export default component$(() => {
       isLoading.value = false;
     }
   });
-
+const navigate=useNavigate()
   return (
     <main class="max-w-7xl mx-auto px-4 py-8">
-      <span onClick$={() => history.back()} class={"py-2 w-fit h-fit flex group hover:text-primary text-primary/50 transition-colors text-sm items-center cursor-pointer  "}>
+      <span onClick$={() =>navigate("/") } class={"py-2 w-fit h-fit flex group hover:text-primary text-primary/50 transition-colors text-sm items-center cursor-pointer  "}>
         <NavArrowLeft class="group-hover:-translate-x-1 transition-transform"/>
-        Back
+        Home
       </span>
       <h1 class="text-2xl font-semibold mb-4">
         Search results for "{query.value || category.value.trim()}"

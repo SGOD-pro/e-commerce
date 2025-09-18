@@ -4,7 +4,7 @@ from collections import defaultdict
 from bson import ObjectId
 from langchain_qdrant import QdrantVectorStore
 from fastapi.encoders import jsonable_encoder
-
+from typing import Optional,List
 def build_text(product: dict):
     """Combine product fields into text and split into token-safe chunks"""
     return " ".join([
@@ -21,11 +21,10 @@ async def search_products(query: str, limit: int = 10):
         collection_name="products",
         embedding=embeddings,
     )
-
     # Over-fetch to compensate for duplicates
     docs_with_scores = await vector_store.asimilarity_search_with_score(
         query=query,
-        k=limit * 2   # fetch extra candidates
+        k=limit * 2   
     )
 
     # Group scores by product ID
@@ -42,7 +41,6 @@ async def search_products(query: str, limit: int = 10):
 
     # Convert to ObjectId for Mongo query
     mongo_ids = [ObjectId(pid) for pid in product_ids]
-    print("mongo_ids", len(mongo_ids))
     return mongo_ids
 
 
@@ -151,44 +149,80 @@ from collections import defaultdict
 # interactions = { user_id: {product_id: rating, ...}, ... }
 
 # XXX: v2 user recomendation
-# async def build_user_item_matrix(user_id: str):
-#      # BUG: USE QUERY TO GET USER INTERACTIONS
-#     cursor = await interactions_collection.find().to_list()
-#     user_items = defaultdict(dict)
-#     for row in cursor:
-#         user_items[row["user_id"]][row["product_id"]] = row.get("rating", 1.0)
-#     return user_items
+from collections import defaultdict
+import numpy as np
+
+async def get_user_items(user_id: str):
+    """
+    Get all items a specific user interacted with.
+    """
+    cursor = await interactions_collection.find({"user_id": user_id}).to_list(None)
+    items = {}
+    weight = {"view": 1.0, "cart": 2.0, "favorite": 2.5, "purchase": 3.0}
+    for row in cursor:
+        rating = row.get("rating") or weight.get(row.get("action"), 1.0)
+        items[str(row["product_id"])] = rating
+    return items
 
 
-# def cosine_similarity(vec1, vec2):
-#     if not vec1 or not vec2:
-#         return 0.0
-#     v1 = np.array(list(vec1.values()))
-#     v2 = np.array([vec2.get(k, 0) for k in vec1.keys()])
-#     denom = (np.linalg.norm(v1) * np.linalg.norm(v2))
-#     return float(np.dot(v1, v2) / denom) if denom else 0.0
+async def build_item_user_matrix():
+    """
+    Build item -> users mapping for item-based CF.
+    """
+    cursor = await interactions_collection.find({}).to_list(None)
+    item_users = defaultdict(dict)
+    weight = {"view": 1.0, "cart": 2.0, "favorite": 2.5, "purchase": 3.0}
+
+    for row in cursor:
+        rating = row.get("rating") or weight.get(row.get("action"), 1.0)
+        item_users[str(row["product_id"])][str(row["user_id"])] = rating
+    return item_users
 
 
-# async def recommend_cf(user_id: str, N: int = 10):
-#     """
-#     Recommend products using user-based CF.
-#     Returns [(product_id, score), ...]
-#     """
-#     user_items = await build_user_item_matrix(user_id)
-#     if user_id not in user_items:
-#         return []  # cold start user
+def cosine_similarity(vec1, vec2):
+    if not vec1 or not vec2:
+        return 0.0
+    v1 = np.array(list(vec1.values()))
+    v2 = np.array([vec2.get(k, 0) for k in vec1.keys()])
+    denom = (np.linalg.norm(v1) * np.linalg.norm(v2))
+    return float(np.dot(v1, v2) / denom) if denom else 0.0
 
-#     target_items = user_items[user_id]
-#     scores = defaultdict(float)
 
-#     for other_user, other_items in user_items.items():
-#         if other_user == user_id:
-#             continue
-#         sim = cosine_similarity(target_items, other_items)
-#         for pid, rating in other_items.items():
-#             if pid not in target_items:  # avoid items user already interacted with
-#                 scores[pid] += sim * rating
+async def recommend(user_id: Optional[str] = None, N: int = 10) -> List[str]:
+    """
+    Recommend item IDs only.
+    - If user_id given and user has history → personalized CF.
+    - Else → fallback to popular items.
+    
+    Returns: List of product IDs (strings)
+    """
+    if user_id:
+        user_items = await get_user_items(user_id)  # e.g. dict {item_id: weight}
+        if user_items:  # ✅ Personalized recommendation
+            item_users = await build_item_user_matrix()  # e.g. {item_id: vector_of_users}
+            scores = defaultdict(float)
 
-#     # Sort by score
-#     ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-#     return ranked[:N]
+            for item_id in user_items:
+                for other_item, users in item_users.items():
+                    if other_item == item_id or other_item in user_items:
+                        continue
+                    sim = cosine_similarity(item_users[item_id], users)
+                    scores[other_item] += sim * user_items[item_id]
+
+            ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+            return [item_id for item_id, _ in ranked[:N]]
+
+    # ❄ Cold start / no user_id / no history → popular item
+    pipeline = [
+        {"$match": {"product_id": {"$exists": True, "$ne": None}}},
+        {"$group": {"_id": "$product_id", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": N}
+    ]
+    cursor =await interactions_collection.aggregate(pipeline)
+    popular = await cursor.to_list(length=N)
+
+    if not popular:
+        return []
+
+    return [str(doc["_id"]) for doc in popular if doc["_id"] is not None]

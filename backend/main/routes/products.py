@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Request,HTTPException
 from main.db.mongo import products_collection
 from main.db.redis import redis_client
 from main.schema.graphql import graphql_router  # import your GraphQL router
-from main.recommender.engine import recommend_similar_products
-
+from main.recommender.engine import recommend_similar_products,recommend
+from main.auth.dependencies import auth_middleware
+from bson import ObjectId
 router = APIRouter()
 
 router.include_router(graphql_router, prefix="/graphql")
@@ -16,6 +17,27 @@ async def ping():
 async def recommend_items(product_id: str, limit: int = 10):
     res=await recommend_similar_products(product_id, limit)
     return {"products":res}
+
+@router.get("/recommend")
+async def recommender(request:Request, limit: int = 10):
+    user_id=None
+    try:
+        user_id = await auth_middleware(request)
+    except HTTPException:
+        pass
+        product_ids=[]
+    print(user_id)
+    if user_id:
+        product_ids=await recommend(user_id["user_id"], limit)
+    else:
+        product_ids=await recommend(N=limit)
+    print(product_ids)
+    products = await products_collection.find(
+            {"_id": {"$in": [ObjectId(pid) for pid in product_ids]}}
+        ).to_list(length=limit)
+    
+    return {"products":products}
+
 # @router.get("/recommend/hybrid/{user_id}/{product_id}")
 # async def api_recommend_hybrid(user_id: str, product_id: str, limit: int = 10):
     # --- Step 1: Collaborative Filtering candidates ---

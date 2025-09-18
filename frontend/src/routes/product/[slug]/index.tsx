@@ -202,10 +202,10 @@ export default component$(() => {
                   onClick$={handleAddToWishlist}
                   class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10"
                 >
-                  <Heart />
+                  <Heart size={20}/>
                 </button>
                 <button class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10">
-                  <Share class="" />
+                  <Share size={20} />
                 </button>
               </div>
             </div>
@@ -220,8 +220,9 @@ export default component$(() => {
 });
 
 // 3. export head to set metadata
-export const head: DocumentHead = () => {
-  const prod = useProduct();
+export const head: DocumentHead = ({ resolveValue }) => {
+  // resolveValue reads the route loader value (useProduct) safely in head
+  const prod = resolveValue(useProduct) as ProductNew | null;
 
   if (!prod) {
     return {
@@ -235,10 +236,9 @@ export const head: DocumentHead = () => {
     };
   }
 
-  const productTitle = prod.value?.title ?? "Product";
-  const productDescription =
-    prod.value?.description?.join(" ") ?? `Buy ${productTitle} from My Store`;
-  const imageUrl = prod.value?.images?.[0]?.large ?? "/default-image.png";
+  const productTitle = prod.title ?? "Product";
+  const productDescription = (prod.description ?? []).join(" ") || `Buy ${productTitle} from My Store`;
+  const imageUrl = prod.images?.[0]?.large ?? "/default-image.png";
 
   return {
     title: `${productTitle} — My Store`,

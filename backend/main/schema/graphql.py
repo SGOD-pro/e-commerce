@@ -3,8 +3,8 @@ from typing import List, Optional, Dict, Any, Tuple
 import strawberry
 from strawberry.fastapi import GraphQLRouter
 from strawberry.experimental.pydantic import type as pydantic_type
-# from graphql import Info
-from strawberry.types import Info 
+from graphql import GraphQLError
+from strawberry.types import Info
 from fastapi import HTTPException
 from bson import ObjectId
 from main.db.mongo import products_collection,interactions_collection
@@ -120,12 +120,14 @@ def build_sort(sort_by: Optional[str], sort_dir: int) -> List[Tuple[str, int]]:
     return [("_id", -1)]
 
 def to_mongo_doc(interaction: InteractionCreate) -> dict:
-    return {
+    doc= {
         "user_id": ObjectId(interaction.user_id),
-        "product_id": ObjectId(interaction.product_id),
         "action": interaction.action,
         "timestamp": interaction.timestamp
     }
+    if interaction.product_id:
+        doc["product_id"] = ObjectId(interaction.product_id)
+    return doc
 # ---------- Selection projection helper (optional) ----------
 def get_requested_fields(info: Info) -> List[str]:
     """
@@ -239,7 +241,17 @@ class Query:
 
         mongo_ids: List[ObjectId] = []
         if search:
-            mongo_ids=await search_products(search, limit)
+            try:
+                mongo_ids = await search_products(search, limit)
+            except Exception as e:  # catch ConnectError or any IO error
+                # log server-side
+                print("Search backend failed:", repr(e))
+                # raise safe GraphQL error
+                raise GraphQLError(
+                    "Search service unavailable, please try again later",
+                    original_error=e,
+                    extensions={"code": "SEARCH_UNAVAILABLE"}
+                )
             
 
 
@@ -298,9 +310,10 @@ async def get_context(request: Request):
     user = None
     try:
         user = await auth_middleware(request)
+        print(user)
     except HTTPException:
-        pass  # If you want GraphQL to allow unauthenticated queries, just leave user=None
-    return {"user": user}
+        pass
+    return {"user": user["user_id"] if user else None}
 
 schema = strawberry.Schema(query=Query)
 

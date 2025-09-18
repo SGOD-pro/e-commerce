@@ -1,4 +1,10 @@
-import { $, component$, useContext, useSignal, useStore } from "@builder.io/qwik";
+import {
+  $,
+  component$,
+  useContext,
+  useSignal,
+  useStore,
+} from "@builder.io/qwik";
 import { Link, useNavigate } from "@builder.io/qwik-city";
 import { ShoppingCart, Search, Menu, X, Cart } from "~/icons";
 import { Button } from "~/components/ui/button";
@@ -19,12 +25,12 @@ const Navigation = component$((props: NavigationProps) => {
 
   const cartItemCount = props.cartItemCount ?? 2;
   const auth = useContext(Auth);
-  console.log(auth)
+  console.log(auth);
   const handleSubmit = $((ev: Event) => {
     ev.preventDefault();
     const q = searchQuery.value.trim();
     if (!q) return;
-    console.log(q)
+    console.log(q);
     navigate(`/search?q=${encodeURIComponent(q)}`);
   });
 
@@ -39,7 +45,11 @@ const Navigation = component$((props: NavigationProps) => {
 
           {/* Desktop Search Bar */}
           <div class="hidden md:flex flex-1 max-w-md mx-8">
-            <form preventdefault:submit onSubmit$={handleSubmit} class="relative w-full">
+            <form
+              preventdefault:submit
+              onSubmit$={handleSubmit}
+              class="relative w-full"
+            >
               <Search
                 class="absolute left-3 top-1/2 transform -translate-y-1/2 "
                 size={20}
@@ -65,10 +75,8 @@ const Navigation = component$((props: NavigationProps) => {
               Categories
             </Link>
 
-            {/* <ThemeToggle /> */}
-
             <Link href="/cart">
-              <Button variant="ghost" size="sm" class="relative">
+              <Button variant="outline" size="icon">
                 <Cart />
                 {cartItemCount > 0 && (
                   <span class="absolute -top-1 -right-1 bg-foreground text-background text-xs rounded-full h-4 w-4 flex items-center justify-center font-medium ">
@@ -78,7 +86,10 @@ const Navigation = component$((props: NavigationProps) => {
               </Button>
             </Link>
 
-            <UserProfile isAuthenticated={auth.isAuth} user={{email: auth.email, name: auth.name}} />
+            <UserProfile
+              isAuthenticated={auth.isAuth}
+              user={{ email: auth.email, name: auth.name }}
+            />
           </div>
 
           {/* Mobile Menu Button */}
@@ -106,7 +117,9 @@ const Navigation = component$((props: NavigationProps) => {
           {/* Mobile Search */}
           <div class="pt-4 pb-2">
             <form onSubmit$={handleSubmit} class="relative">
-              <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <button type="submit">
+                <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              </button>
               <Input
                 type="search"
                 placeholder="Search products..."
