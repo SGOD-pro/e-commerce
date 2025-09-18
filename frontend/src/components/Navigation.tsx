@@ -6,21 +6,20 @@ import { Input } from "~/components/ui/input";
 // import ThemeToggle from '@/components/ThemeToggle';
 import { UserProfile } from "~/components/UserProfile";
 import { cn } from "~/lib/utils";
-import { HomeContent } from "~/context/store";
 import { Auth } from "~/context/auth";
 
 interface NavigationProps {
   cartItemCount?: number;
 }
 
-export default component$((props: NavigationProps) => {
+const Navigation = component$((props: NavigationProps) => {
   const isMenuOpen = useSignal<boolean>(false);
   const searchQuery = useSignal<string>("");
   const navigate = useNavigate();
 
   const cartItemCount = props.cartItemCount ?? 2;
   const auth = useContext(Auth);
-
+  console.log(auth)
   const handleSubmit = $((ev: Event) => {
     ev.preventDefault();
     const q = searchQuery.value.trim();
@@ -156,3 +155,4 @@ export default component$((props: NavigationProps) => {
     </nav>
   );
 });
+export default Navigation;

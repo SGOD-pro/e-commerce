@@ -2,58 +2,92 @@ import { HeroSection } from "~/components/home/HeroSection";
 import CategoryGrid from "~/components/home/CategoryGrid";
 import { ProductCarousel } from "~/components/home/ProductCarousel";
 
-import { $, component$, useSignal, useVisibleTask$ } from "@builder.io/qwik";
-import { ALL_CATEGORIES_QUERY, graphqlRequest, PRODUCTS_QUERY } from "~/lib/Fetcher";
+import {
+  $,
+  component$,
+  useContext,
+  useSignal,
+  useVisibleTask$,
+} from "@builder.io/qwik";
+import {
+  ALL_CATEGORIES_QUERY,
+  graphqlRequest,
+  PRODUCTS_QUERY,
+} from "~/lib/Fetcher";
 import { Category, ProductNew } from "../..";
-import { Toaster } from 'qwik-sonner'
 
+import { HomeContent } from "~/context/store";
 
 const Index = component$(() => {
-  const featuredProducts = useSignal<ProductNew[]>([]);
-  const recommendedProducts = useSignal<ProductNew[]>([]);
-  const topRatedProducts = useSignal<ProductNew[]>([]);
-  const recentProducts = useSignal<ProductNew[]>([]);
-  const categories=useSignal<Category[]>([])
+  const useStore = useContext(HomeContent);
+  const featuredProducts = useSignal<ProductNew[]>(
+    useStore.featuredProducts || []
+  );
+  const recommendedProducts = useSignal<ProductNew[]>(
+    useStore.recommendedProducts || []
+  );
+  const topRatedProducts = useSignal<ProductNew[]>(
+    useStore.topRatedProducts || []
+  );
+  const recentProducts = useSignal<ProductNew[]>(useStore.recentProducts || []);
+  const categories = useSignal<Category[]>(useStore.categories || []);
 
   useVisibleTask$(async () => {
-    const fetchTopRated = graphqlRequest<{ products: ProductNew[] }>(
-      PRODUCTS_QUERY,
-      {
-        minRating: 4,
-        limit: 10,
-        sortBy: "average_rating"
-      }
-    ).then((data) => {
-      topRatedProducts.value = data.products;
-    });
-    const fetchRecommended = graphqlRequest<{ products: ProductNew[] }>(
-      PRODUCTS_QUERY,
-      {
-        limit: 8,
-      }
-    ).then((data) => {
-      recommendedProducts.value = data.products;
-    });
-    const fetchRecent = graphqlRequest<{ products: ProductNew[] }>(
-      PRODUCTS_QUERY
-    ).then((data) => {
-      recentProducts.value = data.products;
-    });
-    const fetchfeaturedProducts = graphqlRequest<{ products: ProductNew[] }>(
-      PRODUCTS_QUERY,
-      {
-        limit: 10,
-        minPrice: 10,
-        maxPrice: 50,
-        sortBy: "rating_number",
-      }
-    ).then((data) => {
-      featuredProducts.value = data.products;
-    });
-    const fetchCategory=graphqlRequest<{allCategories: Category[]}>(ALL_CATEGORIES_QUERY).then((data)=>{
-      console.log(data)
-      categories.value=data.allCategories
-    })
+    if (!useStore.topRatedProducts || useStore.topRatedProducts.length === 0) {
+      const fetchTopRated = graphqlRequest<{ products: ProductNew[] }>(
+        PRODUCTS_QUERY,
+        {
+          minRating: 4,
+          limit: 10,
+          sortBy: "average_rating",
+        }
+      ).then((data) => {
+        topRatedProducts.value = data.products;
+        useStore.topRatedProducts = data.products;
+      });
+    }
+    if (!useStore.recommendedProducts||useStore.recommendedProducts?.length === 0) {
+      const fetchRecommended = graphqlRequest<{ products: ProductNew[] }>(
+        PRODUCTS_QUERY,
+        {
+          limit: 8,
+        }
+      ).then((data) => {
+        recommendedProducts.value = data.products;
+        useStore.recommendedProducts = data.products;
+      });
+    }
+    if (!useStore.recentProducts|| useStore.recentProducts?.length === 0) {
+      const fetchRecent = graphqlRequest<{ products: ProductNew[] }>(
+        PRODUCTS_QUERY
+      ).then((data) => {
+        recentProducts.value = data.products;
+        useStore.recentProducts = data.products;
+      });
+    }
+    if (!useStore.featuredProducts || useStore.featuredProducts?.length === 0) {
+      const fetchfeaturedProducts = graphqlRequest<{ products: ProductNew[] }>(
+        PRODUCTS_QUERY,
+        {
+          limit: 10,
+          minPrice: 10,
+          maxPrice: 50,
+          sortBy: "rating_number",
+        }
+      ).then((data) => {
+        featuredProducts.value = data.products;
+        useStore.featuredProducts = data.products;
+      });
+    }
+    if (!useStore.categories || useStore.categories?.length === 0) {
+      const fetchCategory = graphqlRequest<{ allCategories: Category[] }>(
+        ALL_CATEGORIES_QUERY
+      ).then((data) => {
+        console.log(data);
+        categories.value = data.allCategories;
+        useStore.categories = data.allCategories;
+      });
+    }
   });
 
   return (

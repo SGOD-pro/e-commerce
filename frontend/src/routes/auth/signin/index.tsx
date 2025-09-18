@@ -1,20 +1,22 @@
 import { component$, useStore, $, useContext } from "@builder.io/qwik";
+import { useNavigate } from "@builder.io/qwik-city";
+import { toast } from "qwik-sonner";
 import { z } from "zod";
 import { Auth } from "~/context/auth"; // update path if needed
 
-const SIGNIN_URL = "http://localhost:8000/signin"; // change to your API URL
-const ME_URL = "http://localhost:8000/me"; // endpoint that returns current user based on cookie
+const SIGNIN_URL = "http://localhost:8000/auth/signin"; // change to your API URL
+const ME_URL = "http://localhost:8000/auth/me"; // endpoint that returns current user based on cookie
 
 /* Zod schema */
 const signinSchema = z.object({
   email: z.string().email("Enter a valid email"),
-  password: z.string().min(1, "Password is required"),
+  password: z.string().min(8, "Password is required"),
 });
 type SigninData = z.infer<typeof signinSchema>;
 
 export default component$(() => {
   const auth = useContext(Auth);
-
+  const navigate=useNavigate()
   const form = useStore({
     email: "",
     password: "",
@@ -45,20 +47,19 @@ export default component$(() => {
 
     const parsed = signinSchema.safeParse(payload);
     if (!parsed.success) {
-      // Use Zod's flatten() to get fieldErrors as Record<string, string[]>
       const { fieldErrors } = parsed.error.flatten();
-      // fieldErrors: Record<string, string[]>
       form.errors = fieldErrors;
       return;
     }
 
     form.submitting = true;
+    console.log(payload);
     try {
       const res = await fetch(SIGNIN_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        credentials: "include", // important: accept HttpOnly cookie
+        credentials: "include",
       });
 
       if (!res.ok) {
@@ -68,26 +69,20 @@ export default component$(() => {
         return;
       }
 
-      // At this point server should have set the HttpOnly cookie.
-      // Now fetch /me to hydrate client-side user info (optional but recommended)
       const meRes = await fetch(ME_URL, { credentials: "include" });
       if (meRes.ok) {
         const meJson = await meRes.json().catch(() => null);
-        // adapt to your /me response shape
-        //    auth.name = meJson?.user ?? { id: meJson?.user_id, email: form.email };
         auth.isAuth = true;
-        auth.email = form.email;
+        auth.email = meJson?.email ??form.email;
+        auth.name = meJson?.name ?? form.email;
+        navigate('/');
       } else {
-        // If /me fails, still proceed — middleware will check cookie on navigation
         console.warn("Failed to fetch /me after signin");
       }
-
-      // redirect to home or previous page
-      // you may use Qwik navigation; window.location is safe and simple
-      window.location.href = "/";
-    } catch (err) {
+    } catch (err:Error |any) {
       console.error("Signin error:", err);
       form.serverError = "Network error. Please try again.";
+      toast.error(err.message||"Network error. Please try again.");
     } finally {
       form.submitting = false;
     }
@@ -105,7 +100,7 @@ export default component$(() => {
       </div>
 
       <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-        <form onSubmit$={submit$} class="space-y-6" noValidate>
+        <form preventdefault:submit onSubmit$={submit$} class="space-y-4" noValidate>
           {/* Email */}
           <div>
             <label

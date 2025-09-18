@@ -7,10 +7,11 @@ import {
   useVisibleTask$,
 } from "@builder.io/qwik";
 import { useLocation, useNavigate } from "@builder.io/qwik-city";
-import { Filter, X } from "~/icons";
+import { Filter, NavArrowLeft, X } from "~/icons";
 import { ProductCard } from "~/components/ProductCard";
 import { ProductNew } from "../../..";
 import { graphqlRequest, PRODUCTS_QUERY } from "~/lib/Fetcher";
+import { Button } from "~/components/ui/button";
 
 interface FilterState {
   categories: string[];
@@ -37,7 +38,10 @@ const SearchResultsInfo = component$<{
 ));
 
 async function fetchProductsFromServer(variables: Record<string, any>) {
-  const res=await graphqlRequest<{ products: ProductNew[] }>(PRODUCTS_QUERY, variables)
+  const res = await graphqlRequest<{ products: ProductNew[] }>(
+    PRODUCTS_QUERY,
+    variables
+  );
   return res.products || [];
 }
 // const ActiveFiltersBadge = component$<{ count: number }>((props) => {
@@ -56,12 +60,15 @@ export default component$(() => {
   const error = useSignal<string | null>(null);
 
   const query = useComputed$(() => location.url.searchParams.get("q") || "");
-
+  const category = useComputed$(
+    () => location.url.searchParams.get("category") || ""
+  );
   useVisibleTask$(async ({ track }) => {
     track(() => location.url.searchParams.toString());
     const q = query.value.trim();
-
-    if (!q) {
+    const cat = category.value.trim();
+    console.log(q, cat);
+    if (!q && !cat) {
       products.value = [];
       return;
     }
@@ -69,9 +76,16 @@ export default component$(() => {
     isLoading.value = true;
     error.value = null;
     try {
-      const vars = { search: q, limit: 20 };
+      const vars = { limit: 20 };
+      if (q) {
+        Object.assign(vars, { search: q });
+      }
+      if (category) {
+        Object.assign(vars, { category: cat });
+      }
       const result = await fetchProductsFromServer(vars);
       products.value = result;
+      console.log(result);
     } catch (err: any) {
       console.error("Search fetch error:", err);
       error.value = err?.message || "Failed to load products";
@@ -83,7 +97,13 @@ export default component$(() => {
 
   return (
     <main class="max-w-7xl mx-auto px-4 py-8">
-      <h1 class="text-2xl font-semibold mb-4">Search results for "{query.value}"</h1>
+      <span onClick$={() => history.back()} class={"py-2 w-fit h-fit flex group hover:text-primary text-primary/50 transition-colors text-sm items-center cursor-pointer  "}>
+        <NavArrowLeft class="group-hover:-translate-x-1 transition-transform"/>
+        Back
+      </span>
+      <h1 class="text-2xl font-semibold mb-4">
+        Search results for "{query.value || category.value.trim()}"
+      </h1>
 
       {isLoading.value ? (
         <div class="flex justify-center py-12">

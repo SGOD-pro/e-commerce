@@ -10,14 +10,14 @@ import asyncio
 
 # Initialize Qdrant client
 qdrant_client = QdrantClient(
-    url="https://2c15c181-6b77-4ea0-b83a-cbbbb4ef9aee.eu-west-1-0.aws.cloud.qdrant.io:6333",
-    api_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.JzBM1qzhmRFLtznrr4_MhbQdvSBWMsDulht6KsrG5_A",
+    url="",
+    api_key="",
 )
 
 # Initialize embeddings
 embeddings = NVIDIAEmbeddings(
     model="nvidia/nv-embed-v1",
-    api_key="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",
+    api_key="",
     truncate="NONE",
 )
 

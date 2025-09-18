@@ -1,11 +1,8 @@
 import { component$, useStore, $, Slot } from "@builder.io/qwik";
+import { useNavigate } from "@builder.io/qwik-city";
 import { z } from "zod";
 
-/**
- * Adjust this URL to your backend origin / path.
- * If backend is on same origin / proxied, you can use a relative path like "/api/signup"
- */
-const SIGNUP_URL = "http://localhost:8000/signup";
+const SIGNUP_URL = "http://localhost:8000/auth/signup";
 
 /* ---------- ZOD SCHEMA ---------- */
 const signupSchema = z
@@ -35,7 +32,7 @@ export default component$(() => {
     // errors will hold field errors keyed by field name
     errors: {} as Record<string, string[] | undefined>,
   });
-
+  const navigate=useNavigate()
 const submit$ = $(async (e: SubmitEvent) => {
   e.preventDefault();
   store.serverError = "";
@@ -70,7 +67,6 @@ const submit$ = $(async (e: SubmitEvent) => {
         password: data.password,
         name: data.name,
       }),
-      // credentials: "include", // enable if backend sets cookies across origins
     });
 
     if (!res.ok) {
@@ -79,7 +75,7 @@ const submit$ = $(async (e: SubmitEvent) => {
     } else {
       const json = await res.json().catch(() => null);
       store.success = json?.message || "Account created successfully";
-      setTimeout(() => (window.location.href = "/auth/signin"), 900);
+      navigate("/auth/signin")
     }
   } catch (err) {
     console.error("Signup error:", err);
@@ -108,7 +104,7 @@ const submit$ = $(async (e: SubmitEvent) => {
       </div>
 
       <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-        <form onSubmit$={submit$} class="space-y-4" noValidate>
+        <form preventdefault:submit onSubmit$={submit$} class="space-y-4" noValidate>
           {/* Name */}
           <div>
             <label for="name" class="block text-sm/6 font-medium text-gray-100">

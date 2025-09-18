@@ -38,7 +38,7 @@ export const Avatar = component$<{ class?: string }>(({ class: className }) => {
 
   return (
     <div class={cn("avatar", className)}>
-      <div class="w-10 h-10 rounded-full overflow-hidden">
+      <div class="size-full rounded-full overflow-hidden">
         {!state.isLoaded && !state.hasError && !state.srcMissing && (
           <div class="skeleton"></div>
         )}
